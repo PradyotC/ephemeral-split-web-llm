@@ -1,0 +1,10 @@
+.git
+.terraform
+terraform.tfstate
+terraform.tfstate.backup
+terraform.tfvars
+.env
+
+# Ignore the scripts too
+create.sh
+destroy.sh
