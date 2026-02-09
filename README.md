@@ -1,10 +1,55 @@
-### 1. Create terraform.tfvars
+# ☁️ Ephemeral Ollama Infrastructure (AWS + Tailscale)
 
-```bash
-aws_access_key = "AKIAIOSFODNN7EXAMPLE"
-aws_secret_key = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
-tailscale_auth_key_brain = "tskey-auth-khawsderft11CNTRL-we87tqegqwuveycwreyqrec6edfryqfere"
-tailscale_auth_key_brain = "tskey-auth-khploikjuq11CNTRL-MAvBJxguittuiguyguuybtrcy6cuyuetrx"
+An automated Infrastructure-as-Code (IaC) project to deploy a private, secure, and disposable AI Chat interface on AWS.
+
+This project uses **Terraform** to provision the infrastructure, **Tailscale** for secure mesh networking, and **Ollama** to serve the LLM. It connects a public-facing Go/React web server to a private, backend AI inference server.
+
+## 🏗️ Architecture
+
+The infrastructure consists of two distinct AWS EC2 instances connected via a private Tailscale Tailnet:
+
+1.  **The Body (Web Server):**
+    * **Instance:** `t3.micro` (Low cost)
+    * **Stack:** Go (Golang) Backend + React Frontend.
+    * **Role:** Serves the UI and proxies API requests to the Brain.
+    * **Networking:** Accessible via Public HTTP (Port 80).
+
+2.  **The Brain (LLM Server):**
+    * **Instance:** `m7i-flex.large` (Compute optimized, 20GB Storage).
+    * **Stack:** Ollama running `qwen2.5-coder:3b`.
+    * **Role:** Handles inference and heavy computation.
+    * **Networking:** **Private only.** Accessible only via Tailscale.
+
+**Connection Flow:**
+`User` -> `Internet` -> `Web Server (Body)` --[Tailscale VPN]--> `LLM Server (Brain)`
+
+## ✨ Key Features
+
+* **Zero-Config Deployment:** Uses `user_data` scripts to install dependencies, clone code, and build binaries automatically on boot.
+* **Cost Optimized:** Designed to be destroyed when not in use. Includes scripts to gracefully log out of Tailscale and terminate resources.
+* **Custom Model Optimization:** Automatically creates a custom Ollama model (`coder-lite`) with a 4096 context window to prevent RAM saturation on the instance.
+* **Robust Error Handling:** Uses retry logic and HTTP ZIP downloads to bypass transient git protocol failures.
+
+## 🛠️ Prerequisites
+
+1.  **AWS Account** (Access Key & Secret Key).
+2.  **Tailscale Account:**
+    * Generate two **Ephemeral** Auth Keys (one for `tag:body`, one for `tag:brain`).
+    * *Note: Ephemeral keys automatically clean themselves up after the instances are destroyed.*
+3.  **Docker:** Used to run Terraform in a consistent environment (no local TF installation needed).
+
+## 🚀 Getting Started
+
+### 1. Configuration
+Create a `terraform.tfvars` file in the root directory:
+
+```hcl
+aws_access_key           = "YOUR_AWS_ACCESS_KEY"
+aws_secret_key           = "YOUR_AWS_SECRET_KEY"
+tailscale_auth_key_brain = "tskey-auth-..."
+tailscale_auth_key_body  = "tskey-auth-..."
+aws_region               = "us-east-1"
+project_name             = "Ollama-IaC"
 ```
 
 ### 2. Deployment
